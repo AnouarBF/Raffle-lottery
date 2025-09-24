@@ -6,7 +6,17 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 error PriceConverter__BadPrice();
 
 library PriceConverter {
-    function getPrice(
+    function getConversion(
+        uint amount,
+        AggregatorV3Interface priceFeed
+    ) public view returns (uint) {
+        uint ethPrice_18 = _getPrice(priceFeed);
+        uint amountUSD_18 = (amount * ethPrice_18) / 1e18;
+        uint amountUSD = amountUSD_18 / 1e18;
+        return amountUSD;
+    }
+
+    function _getPrice(
         AggregatorV3Interface priceFeed
     ) internal view returns (uint) {
         (, int price, , , ) = priceFeed.latestRoundData();
@@ -14,14 +24,5 @@ library PriceConverter {
         uint decimal = 18 - priceFeed.decimals();
         uint correctDecimals_18 = uint(price) * (10 ** decimal);
         return correctDecimals_18;
-    }
-    function getConversion(
-        uint amount,
-        AggregatorV3Interface priceFeed
-    ) public view returns (uint) {
-        uint ethPrice_18 = getPrice(priceFeed);
-        uint amountUSD_18 = (amount * ethPrice_18) / 1e18;
-        uint amountUSD = amountUSD_18 / 1e18;
-        return amountUSD;
     }
 }
