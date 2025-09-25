@@ -45,6 +45,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     event PlayerEntered(address indexed _player);
     event WinnerPicked(address indexed _winner);
+    event RequestedRaffleWinner(uint indexed _requestId);
 
     constructor(
         uint _entranceFee_usd,
@@ -89,7 +90,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         Also it shouldn't work untill the enterance period is done
      */
 
-    function pickWinner() public returns (address winner) {
+    function pickWinner() public {
         if (block.timestamp - s_lastsnapshot >= i_interval) {
             revert Raffle__RaffleLocked();
         }
@@ -110,6 +111,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         uint requestId = s_vrfCoordinator.requestRandomWords(request);
         s_raffleState = RaffleState.CALCULATING;
         // winner = s_players[requestId];
+        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(
@@ -148,5 +150,13 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         if (upkeepNeeded) {
             pickWinner();
         }
+    }
+
+    function get_RaffleState() public view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function get_lastSnapshot() external view returns (uint) {
+        return s_lastsnapshot;
     }
 }
