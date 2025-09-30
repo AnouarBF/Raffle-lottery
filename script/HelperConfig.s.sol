@@ -4,34 +4,15 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {MockV3Aggregator} from "test/mocks/MockV3Aggregator.sol";
-
-abstract contract CodeConstants {
-    uint96 public constant MOCK_BASE_FEE = 0.25 ether;
-    uint96 public constant MOCK_GAS_PRICE_LINK = 1e9;
-    // LINK / ETH price
-    int256 public constant MOCK_WEI_PER_UINT_LINK = 4e15;
-
-    address public constant FOUNDRY_DEFAULT_SENDER =
-        0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
-
-    uint256 public constant ETH_SEPOLIA_CHAIN_ID = 11155111;
-    uint256 public constant ETH_MAINNET_CHAIN_ID = 1;
-    uint256 public constant POLYGON_AMOY_CHAIN_ID = 80002;
-    uint256 public constant LOCAL_CHAIN_ID = 31337;
-
-    uint8 public constant DECIMALS = 8;
-    int256 public constant INITIAL_ANSWER = 4000e8;
-}
+import {DeploymentParameters} from "./DeployParam.s.sol";
 
 error HelperConfig__InvalidChainID();
 
-contract HelperConfig is CodeConstants, Script {
-    NetworkConfig public activeNetwork;
+contract HelperConfig is DeploymentParameters, Script {
+    NetworkConfig private activeNetwork;
     mapping(uint chainID => NetworkConfig) public activeNetworkConfig;
 
     struct NetworkConfig {
-        uint _entranceFee_usd;
-        uint _interval;
         address priceFeedAdd;
         address vrfCoordinator;
         uint subscriptionID;
@@ -68,8 +49,6 @@ contract HelperConfig is CodeConstants, Script {
     function get_Mainnet_Config() internal pure returns (NetworkConfig memory) {
         return
             NetworkConfig({
-                _entranceFee_usd: 100,
-                _interval: 30,
                 priceFeedAdd: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419,
                 vrfCoordinator: 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a,
                 subscriptionID: 0,
@@ -81,8 +60,6 @@ contract HelperConfig is CodeConstants, Script {
     function get_Sepolia_Config() internal pure returns (NetworkConfig memory) {
         return
             NetworkConfig({
-                _entranceFee_usd: 100,
-                _interval: 30,
                 priceFeedAdd: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
                 vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
                 subscriptionID: 0,
@@ -98,8 +75,6 @@ contract HelperConfig is CodeConstants, Script {
     {
         return
             NetworkConfig({
-                _entranceFee_usd: 100,
-                _interval: 30,
                 priceFeedAdd: 0xF0d50568e3A7e8259E16663972b11910F89BD8e7,
                 vrfCoordinator: 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2,
                 subscriptionID: 0,
@@ -128,8 +103,6 @@ contract HelperConfig is CodeConstants, Script {
 
         return
             NetworkConfig({
-                _entranceFee_usd: 100,
-                _interval: 30,
                 priceFeedAdd: address(mock_PriceFeed),
                 vrfCoordinator: address(mock_VRFCoordinator),
                 subscriptionID: 0,

@@ -7,11 +7,6 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
-error Raffle__InvalidAmount();
-error Raffle__RaffleLocked();
-error Raffle__FailedTransfer();
-error Raffle__BadVRF();
-
 contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     using PriceConverter for uint256;
 
@@ -25,9 +20,12 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     uint public immutable i_entranceFee_usd;
     uint public immutable i_interval;
     uint private s_lastsnapshot;
+    uint private counter;
     address payable[] private s_players;
     address payable private s_winner;
     RaffleState private s_raffleState;
+
+    mapping(address => uint) private s_playerIDNum;
 
     //////////////////////////////////////////////////////////////////////////////////////////
     AggregatorV3Interface private immutable i_priceFeed;
@@ -46,6 +44,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     event PlayerEntered(address indexed _player);
     event WinnerPicked(address indexed _winner);
     event RequestedRaffleWinner(uint indexed _requestId);
+
+    error Raffle__InvalidAmount();
+    error Raffle__RaffleLocked();
+    error Raffle__FailedTransfer();
+    error Raffle__BadVRF();
 
     constructor(
         uint _entranceFee_usd,
@@ -80,6 +83,8 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         if (s_raffleState != RaffleState.OPEN) revert Raffle__RaffleLocked();
 
         s_players.push(payable(player));
+        s_playerIDNum[player] = counter;
+        counter++;
 
         emit PlayerEntered(player);
     }
@@ -158,5 +163,17 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function get_lastSnapshot() external view returns (uint) {
         return s_lastsnapshot;
+    }
+
+    function get_PlayerIDNum(address player) external view returns (uint) {
+        return s_playerIDNum[player];
+    }
+
+    function get_TotalPlayers() external view returns (uint) {
+        return s_players.length;
+    }
+
+    function get_Player(uint index) external view returns (address) {
+        return s_players[index];
     }
 }

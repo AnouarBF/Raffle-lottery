@@ -8,15 +8,18 @@ import {HelperConfig} from "./HelperConfig.s.sol";
 contract DeployRaffle is Script {
     HelperConfig helperConfig;
 
-    function run() external returns (Raffle, HelperConfig) {
+    function run(
+        uint _entranceFee_usd,
+        uint _interval
+    ) external returns (Raffle, HelperConfig) {
         helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig
             .get_networkConfig();
 
         vm.startBroadcast(); /////////////////////////////////////////
         Raffle raffle = new Raffle(
-            config._entranceFee_usd,
-            config._interval,
+            _entranceFee_usd,
+            _interval,
             config.priceFeedAdd,
             config.vrfCoordinator,
             config.subscriptionID,
