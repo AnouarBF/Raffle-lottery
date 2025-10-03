@@ -12,6 +12,8 @@ contract TestRaffle is Test {
 
     address PLAYER = makeAddr("player");
     uint private constant INITIAL_BALANCE = 10 ether;
+    uint private constant ENTRANCE_FEE = 400;
+    uint private constant INTERVAL = 30;
     // uint entranceFee_usd;
     // uint interval;
     address priceFeedAdd;
@@ -26,7 +28,7 @@ contract TestRaffle is Test {
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
-        (raffle, helperConfig) = deployer.run(400, 30);
+        (raffle, helperConfig) = deployer.run(ENTRANCE_FEE, INTERVAL);
 
         HelperConfig.NetworkConfig memory config = helperConfig
             .get_networkConfig();
@@ -47,11 +49,11 @@ contract TestRaffle is Test {
     }
 
     function test_VRFSubscriptionID() external view {
-        assert(raffle.i_subscriptionID() == 0);
+        assert(raffle.i_subscriptionID() != 0);
     }
 
     function test_correctEntranceFee() external view {
-        assert(raffle.i_entranceFee_usd() == 100);
+        assert(raffle.i_entranceFee_usd() == ENTRANCE_FEE);
     }
 
     function test_correctInterval() external view {
