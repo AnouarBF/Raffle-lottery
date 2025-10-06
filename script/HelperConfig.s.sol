@@ -5,6 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {MockV3Aggregator} from "test/mocks/MockV3Aggregator.sol";
 import {DeploymentParameters} from "./DeployParam.s.sol";
+import {LinkToken} from "test/mocks/LinkTokenMock.sol";
 
 error HelperConfig__InvalidChainID();
 
@@ -18,6 +19,7 @@ contract HelperConfig is DeploymentParameters, Script {
         uint subscriptionID;
         uint32 callbackGasLimit;
         bytes32 keyhash;
+        address link;
     }
 
     constructor() {
@@ -53,7 +55,8 @@ contract HelperConfig is DeploymentParameters, Script {
                 vrfCoordinator: 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a,
                 subscriptionID: 0,
                 callbackGasLimit: 500_000,
-                keyhash: 0x3fd2fec10d06ee8f65e7f2e95f5c56511359ece3f33960ad8a866ae24a8ff10b
+                keyhash: 0x3fd2fec10d06ee8f65e7f2e95f5c56511359ece3f33960ad8a866ae24a8ff10b,
+                link: 0x514910771AF9Ca656af840dff83E8264EcF986CA
             });
     }
 
@@ -62,9 +65,10 @@ contract HelperConfig is DeploymentParameters, Script {
             NetworkConfig({
                 priceFeedAdd: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
                 vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
-                subscriptionID: 0,
+                subscriptionID: 23246075636208544639135353966796573727871061328506327639795872295185259790237,
                 callbackGasLimit: 500_000,
-                keyhash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae
+                keyhash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
+                link: 0x779877A7B0D9E8603169DdbD7836e478b4624789
             });
     }
 
@@ -79,7 +83,8 @@ contract HelperConfig is DeploymentParameters, Script {
                 vrfCoordinator: 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2,
                 subscriptionID: 0,
                 callbackGasLimit: 500_000,
-                keyhash: 0x816bedba8a50b294e5cbd47842baf240c2385f2eaf719edbd4f250a137a8c899
+                keyhash: 0x816bedba8a50b294e5cbd47842baf240c2385f2eaf719edbd4f250a137a8c899,
+                link: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904
             });
     }
 
@@ -99,6 +104,9 @@ contract HelperConfig is DeploymentParameters, Script {
             DECIMALS,
             INITIAL_ANSWER
         );
+
+        LinkToken mock_link = new LinkToken();
+        // mock_link.mint(address(mock_VRFCoordinator), 30);
         vm.stopBroadcast(); //////////////////////////////////////////////////////////////////////////////////////////////
 
         return
@@ -107,7 +115,8 @@ contract HelperConfig is DeploymentParameters, Script {
                 vrfCoordinator: address(mock_VRFCoordinator),
                 subscriptionID: 0,
                 callbackGasLimit: 500_000,
-                keyhash: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c
+                keyhash: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
+                link: address(mock_link)
             });
     }
 }

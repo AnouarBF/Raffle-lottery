@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {Raffle} from "src/RaffleLottery.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
@@ -29,6 +29,10 @@ contract TestRaffle is Test {
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.run(ENTRANCE_FEE, INTERVAL);
+        console.log("Test Contract: ", address(this));
+        console.log("Deploy Contract: ", address(deployer));
+        console.log("HelperConfig Contract: ", address(helperConfig));
+        console.log("Raffle Contract: ", address(raffle));
 
         HelperConfig.NetworkConfig memory config = helperConfig
             .get_networkConfig();
