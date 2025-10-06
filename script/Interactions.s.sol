@@ -7,6 +7,7 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {DeploymentParameters} from "./DeployParam.s.sol";
 import {LinkToken} from "test/mocks/LinkTokenMock.sol";
+import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
 
 contract CreateSubscription is Script, DeploymentParameters {
     error CreateSubscription__Invalid_subID();
@@ -42,29 +43,28 @@ contract FundSubscription is Script, DeploymentParameters {
     error FundSubscription__Failed_Funding();
     uint private constant FUNDED_AMOUNT = 5 ether;
 
+    function fundSubscriptionUsingConfig() public {
+        HelperConfig helper = new HelperConfig();
+        address vrfCoordinator = helper.get_networkConfig().vrfCoordinator;
+        uint subID = helper.get_networkConfig().subscriptionID;
+        address linkToken = helper.get_networkConfig().link;
+
+        // if (_subID == 0) {
+        //     CreateSubscription createSub = new CreateSubscription();
+        //     (_subID, ) = createSub.createSubscription();
+        // }
+
+        // if (_subID == 0 || _vrfCoordinator == address(0))
+        // revert FundSubscription__Failed_Funding();
+
+        fundSubscription(subID, vrfCoordinator, linkToken);
+    }
+
     function fundSubscription(
         uint _subID,
         address _vrfCoordinator,
         address token
     ) public {
-        // HelperConfig helper = new HelperConfig();
-        // address vrfCoordinator = helper.get_networkConfig().vrfCoordinator;
-        // uint subID = helper.get_networkConfig().subscriptionID;
-        // address linkToken = helper.get_networkConfig().link;
-
-        if (_subID == 0) {
-            CreateSubscription createSub = new CreateSubscription();
-            (_subID, ) = createSub.createSubscription();
-        }
-
-        _fundSubscription(_subID, _vrfCoordinator, token);
-    }
-
-    function _fundSubscription(
-        uint _subID,
-        address _vrfCoordinator,
-        address token
-    ) internal {
         console.log("Funding Subscription....");
         console.log("Using VRFCoordinator: ", _vrfCoordinator);
         console.log("On chain: ", block.chainid);
@@ -88,6 +88,43 @@ contract FundSubscription is Script, DeploymentParameters {
     }
 
     function run() external {
-        // fundSubscription();
+        fundSubscriptionUsingConfig();
+    }
+}
+
+contract AddConsumer is Script {
+    function addConsumerUsingConfig(address raffle) public {
+        HelperConfig config = new HelperConfig();
+        address vrfCoordinator = config.get_networkConfig().vrfCoordinator;
+        uint subID = config.get_networkConfig().subscriptionID;
+        addConsumer(raffle, vrfCoordinator, subID);
+    }
+
+    function addConsumer(
+        address raffle,
+        address vrfCoordinator,
+        uint subID
+    ) public {
+        console.log(
+            "***********************************************************************"
+        );
+        console.log("Adding consumer: ", raffle);
+        console.log("Using VRF: ", vrfCoordinator);
+        console.log("To the subscription: ", subID);
+        console.log("On Chain: ", block.chainid);
+        vm.startBroadcast(); ///////////////////////////////////////////////////////////////
+        VRFCoordinatorV2_5Mock(vrfCoordinator).addConsumer(subID, raffle);
+        vm.stopBroadcast(); ///////////////////////////////////////////////////////////////
+        console.log(
+            "***********************************************************************"
+        );
+    }
+
+    function run() external {
+        address latestRaffle = DevOpsTools.get_most_recent_deployment(
+            "Raffle",
+            block.chainid
+        );
+        addConsumerUsingConfig(latestRaffle);
     }
 }

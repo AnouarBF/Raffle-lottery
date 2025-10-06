@@ -12,7 +12,8 @@ contract TestRaffle is Test {
 
     address PLAYER = makeAddr("player");
     uint private constant INITIAL_BALANCE = 10 ether;
-    uint private constant ENTRANCE_FEE = 400;
+    uint private constant ENTRANCE_FEE_usd = 400;
+    uint private constant ENTRANCE_FEE_eth = 0.1 ether;
     uint private constant INTERVAL = 30;
     // uint entranceFee_usd;
     // uint interval;
@@ -28,7 +29,7 @@ contract TestRaffle is Test {
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
-        (raffle, helperConfig) = deployer.run(ENTRANCE_FEE, INTERVAL);
+        (raffle, helperConfig) = deployer.run(ENTRANCE_FEE_usd, INTERVAL);
         console.log("Test Contract: ", address(this));
         console.log("Deploy Contract: ", address(deployer));
         console.log("HelperConfig Contract: ", address(helperConfig));
@@ -57,7 +58,7 @@ contract TestRaffle is Test {
     }
 
     function test_correctEntranceFee() external view {
-        assert(raffle.i_entranceFee_usd() == ENTRANCE_FEE);
+        assert(raffle.i_entranceFee_usd() == ENTRANCE_FEE_usd);
     }
 
     function test_correctInterval() external view {
@@ -76,7 +77,7 @@ contract TestRaffle is Test {
 
     function test_playerEntered() external {
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: 0.1 ether}();
+        raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
 
         uint index = raffle.get_PlayerIDNum(PLAYER);
 
@@ -91,7 +92,7 @@ contract TestRaffle is Test {
         for (counter; counter <= limit; counter++) {
             // vm.prank(address(counter));
             hoax(address(uint160(counter)), INITIAL_BALANCE);
-            raffle.enterRaffle{value: 0.1 ether}();
+            raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
         }
 
         assert(raffle.get_TotalPlayers() == limit);
@@ -102,6 +103,18 @@ contract TestRaffle is Test {
         vm.expectEmit(true, false, false, false, address(raffle));
         emit PlayerEntered(PLAYER);
 
-        raffle.enterRaffle{value: 0.1 ether}();
+        raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
+    }
+
+    function test_revertLockedRaffle() external {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
+
+        vm.warp(block.timestamp + INTERVAL + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
+
+        vm.expectRevert(Raffle.Raffle__RaffleLocked.selector);
+        raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
     }
 }

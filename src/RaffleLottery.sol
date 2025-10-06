@@ -96,7 +96,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      */
 
     function pickWinner() public {
-        if (block.timestamp - s_lastsnapshot >= i_interval) {
+        if (block.timestamp - s_lastsnapshot <= i_interval) {
             revert Raffle__RaffleLocked();
         }
 
