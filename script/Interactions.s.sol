@@ -12,22 +12,26 @@ import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
 contract CreateSubscription is Script, DeploymentParameters {
     error CreateSubscription__Invalid_subID();
 
-    function createSubscription() public returns (uint, address) {
+    function createSubscription() public returns (uint, address, address) {
         HelperConfig config = new HelperConfig();
         address vrfCoordinator = config.get_networkConfig().vrfCoordinator;
-        uint subID = _createSubscription(vrfCoordinator);
-        return (subID, vrfCoordinator);
+        address account = config.get_networkConfig().account;
+        uint subID = _createSubscription(vrfCoordinator, account);
+        return (subID, vrfCoordinator, account);
     }
 
     function _createSubscription(
-        address vrfCoordinator
+        address vrfCoordinator,
+        address account
     ) internal returns (uint) {
         console.log("****************************************************");
         console.log("Creating Subscription ID: ");
-        vm.startBroadcast(); ///////////////////////////////////////////////////////
+
+        vm.startBroadcast(account); ///////////////////////////////////////////////////////
         uint subID = VRFCoordinatorV2_5Mock(vrfCoordinator)
             .createSubscription();
         vm.stopBroadcast(); /////////////////////////////////////////////////////////
+
         if (subID == 0) revert CreateSubscription__Invalid_subID();
         console.log("*** Subscription Created: ", subID);
         console.log("*****************************************************");
@@ -48,41 +52,35 @@ contract FundSubscription is Script, DeploymentParameters {
         address vrfCoordinator = helper.get_networkConfig().vrfCoordinator;
         uint subID = helper.get_networkConfig().subscriptionID;
         address linkToken = helper.get_networkConfig().link;
+        address account = helper.get_networkConfig().account;
 
-        // if (_subID == 0) {
-        //     CreateSubscription createSub = new CreateSubscription();
-        //     (_subID, ) = createSub.createSubscription();
-        // }
-
-        // if (_subID == 0 || _vrfCoordinator == address(0))
-        // revert FundSubscription__Failed_Funding();
-
-        fundSubscription(subID, vrfCoordinator, linkToken);
+        fundSubscription(subID, vrfCoordinator, linkToken, account);
     }
 
     function fundSubscription(
         uint _subID,
         address _vrfCoordinator,
-        address token
+        address token,
+        address account
     ) public {
         console.log("Funding Subscription....");
         console.log("Using VRFCoordinator: ", _vrfCoordinator);
         console.log("On chain: ", block.chainid);
         if (block.chainid == LOCAL_CHAIN_ID) {
-            vm.startBroadcast(); //////////////////////////////////////////////////////////
+            vm.startBroadcast(account); //////////////////////////////////////////////////////////
             VRFCoordinatorV2_5Mock(_vrfCoordinator).fundSubscription(
                 _subID,
                 FUNDED_AMOUNT
             );
             vm.stopBroadcast(); ///////////////////////////////////////////////////////////
         } else {
-            vm.startBroadcast();
+            vm.startBroadcast(account); ////////////////////////////////////////////////////////////
             LinkToken(token).transferAndCall(
                 _vrfCoordinator,
                 FUNDED_AMOUNT,
                 abi.encode(_subID)
             );
-            vm.stopBroadcast();
+            vm.stopBroadcast(); //////////////////////////////////////////////////////////////////
         }
         console.log("Subscription Funded Successfully");
     }
@@ -97,13 +95,15 @@ contract AddConsumer is Script {
         HelperConfig config = new HelperConfig();
         address vrfCoordinator = config.get_networkConfig().vrfCoordinator;
         uint subID = config.get_networkConfig().subscriptionID;
-        addConsumer(raffle, vrfCoordinator, subID);
+        address account = config.get_networkConfig().account;
+        addConsumer(raffle, vrfCoordinator, subID, account);
     }
 
     function addConsumer(
         address raffle,
         address vrfCoordinator,
-        uint subID
+        uint subID,
+        address account
     ) public {
         console.log(
             "***********************************************************************"
@@ -112,9 +112,11 @@ contract AddConsumer is Script {
         console.log("Using VRF: ", vrfCoordinator);
         console.log("To the subscription: ", subID);
         console.log("On Chain: ", block.chainid);
-        vm.startBroadcast(); ///////////////////////////////////////////////////////////////
+
+        vm.startBroadcast(account); ///////////////////////////////////////////////////////////////
         VRFCoordinatorV2_5Mock(vrfCoordinator).addConsumer(subID, raffle);
         vm.stopBroadcast(); ///////////////////////////////////////////////////////////////
+
         console.log(
             "***********************************************************************"
         );

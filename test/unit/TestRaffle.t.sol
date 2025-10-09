@@ -77,7 +77,7 @@ contract TestRaffle is Test {
     function test_revertInvalidAmount() external {
         vm.prank(PLAYER);
         vm.expectRevert(Raffle.Raffle__InvalidAmount.selector);
-        raffle.enterRaffle();
+        raffle.enterRaffle{value: 0.01 ether}();
     }
 
     function test_playerEntered() external {

@@ -85,7 +85,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     function enterRaffle() external payable {
         address player = msg.sender;
         uint fee = msg.value.getConversion(i_priceFeed);
-        if (fee != i_entranceFee_usd) revert Raffle__InvalidAmount();
+        if (fee < i_entranceFee_usd) revert Raffle__InvalidAmount();
         if (s_raffleState != RaffleState.OPEN) revert Raffle__RaffleLocked();
 
         s_players.push(payable(player));
@@ -103,6 +103,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         override
         returns (bool upkeepNeeded, bytes memory /* performData */)
     {
+        // There is a underflow/overflow error occuring here in forked test
         bool validInterval = (block.timestamp - s_lastsnapshot) > i_interval;
         bool isOpen = (RaffleState.OPEN == s_raffleState);
         bool hasBalance = (address(this).balance > 0);
