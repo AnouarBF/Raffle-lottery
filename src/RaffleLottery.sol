@@ -43,12 +43,18 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     event PlayerEntered(address indexed _player);
     event WinnerPicked(address indexed _winner);
-    event RequestedRaffleWinner(uint indexed _requestId);
+    event RequestedRaffleWinner(uint indexed _requestID);
 
     error Raffle__InvalidAmount();
     error Raffle__RaffleLocked();
     error Raffle__FailedTransfer();
     error Raffle__BadVRF();
+    error Raffle__UpkeepNotNeeded(
+        address _raffle,
+        RaffleState _raffleState,
+        uint _balance,
+        uint _playersNum
+    );
 
     constructor(
         uint _entranceFee_usd,
@@ -89,34 +95,35 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit PlayerEntered(player);
     }
 
-    /**
-        This function should be able to take a random number in between 0 and last players list item number
-        in order to pick the winner
-        Also it shouldn't work untill the enterance period is done
-     */
+    function checkUpkeep(
+        bytes memory /* checkData */
+    )
+        public
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory /* performData */)
+    {
+        bool validInterval = (block.timestamp - s_lastsnapshot) > i_interval;
+        bool isOpen = (RaffleState.OPEN == s_raffleState);
+        bool hasBalance = (address(this).balance > 0);
+        bool hasPlayers = s_players.length > 0;
 
-    function pickWinner() public {
-        if (block.timestamp - s_lastsnapshot <= i_interval) {
-            revert Raffle__RaffleLocked();
+        upkeepNeeded = validInterval && isOpen && hasBalance && hasPlayers;
+        return (upkeepNeeded, "");
+    }
+
+    function performUpkeep(bytes calldata /* performData */) external override {
+        (bool upkeepNeeded, ) = checkUpkeep("");
+        if (upkeepNeeded) {
+            pickWinner();
+        } else {
+            revert Raffle__UpkeepNotNeeded(
+                address(this),
+                s_raffleState,
+                address(this).balance,
+                s_players.length
+            );
         }
-
-        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient
-            .RandomWordsRequest({
-                keyHash: i_keyhash,
-                subId: i_subscriptionID,
-                requestConfirmations: REQUESTCONFIRMATIONS,
-                callbackGasLimit: i_callbackGasLimit,
-                numWords: NUMWORDS,
-                // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
-            });
-
-        uint requestId = s_vrfCoordinator.requestRandomWords(request);
-        s_raffleState = RaffleState.CALCULATING;
-        // winner = s_players[requestId];
-        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(
@@ -134,27 +141,30 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         if (!success) revert Raffle__FailedTransfer();
     }
 
-    function checkUpkeep(
-        bytes memory /* checkData */
-    )
-        public
-        view
-        override
-        returns (bool upkeepNeeded, bytes memory /* performData */)
-    {
-        bool validInterval = (block.timestamp - s_lastsnapshot) > i_interval;
-        bool isOpen = (RaffleState.OPEN == s_raffleState);
-        bool hasBalance = (address(this).balance > 0);
-        bool hasPlayers = s_players.length > 0;
-        upkeepNeeded = validInterval && isOpen && hasBalance && hasPlayers;
-        return (upkeepNeeded, "");
-    }
+    /**
+        This function should be able to take a random number in between 0 and last players list item number
+        in order to pick the winner
+        Also it shouldn't work untill the enterance period is done
+     */
 
-    function performUpkeep(bytes calldata /* performData */) external override {
-        (bool upkeepNeeded, ) = checkUpkeep("");
-        if (upkeepNeeded) {
-            pickWinner();
-        }
+    function pickWinner() private {
+        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient
+            .RandomWordsRequest({
+                keyHash: i_keyhash,
+                subId: i_subscriptionID,
+                requestConfirmations: REQUESTCONFIRMATIONS,
+                callbackGasLimit: i_callbackGasLimit,
+                numWords: NUMWORDS,
+                // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                )
+            });
+
+        uint requestID = s_vrfCoordinator.requestRandomWords(request);
+        s_raffleState = RaffleState.CALCULATING;
+        // winner = s_players[requestId];
+        emit RequestedRaffleWinner(requestID);
     }
 
     function get_RaffleState() public view returns (RaffleState) {
@@ -175,5 +185,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function get_Player(uint index) external view returns (address) {
         return s_players[index];
+    }
+
+    function get_latestWinner() external view returns (address) {
+        return s_winner;
     }
 }

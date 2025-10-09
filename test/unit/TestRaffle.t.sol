@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test, console2, console} from "forge-std/Test.sol";
 import {Raffle} from "src/RaffleLottery.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
+import {Vm} from "forge-std/Vm.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract TestRaffle is Test {
     Raffle raffle;
@@ -25,7 +27,7 @@ contract TestRaffle is Test {
 
     event PlayerEntered(address indexed _player);
     event WinnerPicked(address indexed _winner);
-    event RequestedRaffleWinner(uint indexed _requestId);
+    event RequestedRaffleWinner();
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
@@ -38,6 +40,9 @@ contract TestRaffle is Test {
         HelperConfig.NetworkConfig memory config = helperConfig
             .get_networkConfig();
 
+        uint subID = helperConfig.get_networkConfig().subscriptionID;
+
+        console.log(subID);
         // entranceFee_usd = config._entranceFee_usd;
         // interval = config._interval;
         priceFeedAdd = config.priceFeedAdd;
@@ -116,5 +121,92 @@ contract TestRaffle is Test {
 
         vm.expectRevert(Raffle.Raffle__RaffleLocked.selector);
         raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    //////////////////****  Pick Winner  ****//////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+
+    modifier enterPlayer() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
+        vm.warp(block.timestamp + INTERVAL + 1);
+        vm.roll(block.number);
+        _;
+    }
+
+    function test_revertRaffleLockedPerformUpkeep() external enterPlayer {
+        vm.warp(INTERVAL);
+        vm.roll(block.number);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Raffle.Raffle__UpkeepNotNeeded.selector,
+                address(raffle),
+                raffle.get_RaffleState(),
+                address(raffle).balance,
+                raffle.get_TotalPlayers()
+            )
+        );
+        raffle.performUpkeep("");
+    }
+
+    function test_emitEvent_RequestedRaffleWinner() external enterPlayer {
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestID = entries[1].topics[1];
+
+        assert(uint(requestID) > 0);
+    }
+
+    function test_fullfilment(uint randomRequestId) external enterPlayer {
+        vm.expectRevert();
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(raffle)
+        );
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    /////////////////////****  Big Test  ****//////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+
+    function test_Raffle() external {
+        uint totalParticipants = 10;
+        uint index = 1;
+        uint contractBalance;
+        uint winnerBalance;
+
+        while (index <= totalParticipants) {
+            hoax(address(uint160(index)), INITIAL_BALANCE);
+            raffle.enterRaffle{value: ENTRANCE_FEE_eth}();
+            index++;
+        }
+
+        contractBalance = address(raffle).balance;
+        console.log("Contract Total Balance: ");
+        console.log(contractBalance);
+
+        vm.warp(block.timestamp + INTERVAL + 1);
+        vm.roll(block.number);
+
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        console.logUint(subscriptionID);
+
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            uint(requestId),
+            address(raffle)
+        );
+
+        address winner = raffle.get_latestWinner();
+        winnerBalance = winner.balance;
+
+        assert(winnerBalance == contractBalance);
+        assert(raffle.get_TotalPlayers() == 0);
+        assert(raffle.get_RaffleState() == Raffle.RaffleState.OPEN);
     }
 }
